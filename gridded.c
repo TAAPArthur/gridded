@@ -30,7 +30,7 @@ typedef struct {
     uint32_t keysym;
     void (*func)();
     int arg;
-    xcb_keycode_t _code;
+    xcb_keycode_t keycode;
 } Binding;
 
 xcb_window_t parent;
@@ -192,10 +192,10 @@ void init_grab_bindings(xcb_connection_t* dis) {
     xcb_key_symbols_t * symbols = xcb_key_symbols_alloc(dis);
     for (int i = 0; i < LEN(bindings); i++) {
         xcb_keycode_t * codes = xcb_key_symbols_get_keycode(symbols, bindings[i].keysym);
-        bindings[i]._code = codes[0];
+        bindings[i].keycode = codes[0];
         free(codes);
-        xcb_grab_key(dis, 1, parent, bindings[i].mod | IGNORE_MASK, bindings[i]._code, XCB_GRAB_MODE_ASYNC, XCB_GRAB_MODE_ASYNC);
-        xcb_grab_key(dis, 1, parent, bindings[i].mod, bindings[i]._code, XCB_GRAB_MODE_ASYNC, XCB_GRAB_MODE_ASYNC);
+        xcb_grab_key(dis, 1, parent, bindings[i].mod | IGNORE_MASK, bindings[i].keycode, XCB_GRAB_MODE_SYNC, XCB_GRAB_MODE_SYNC);
+        xcb_grab_key(dis, 1, parent, bindings[i].mod, bindings[i].keycode, XCB_GRAB_MODE_SYNC, XCB_GRAB_MODE_SYNC);
     }
     xcb_key_symbols_free  (symbols);
 }
@@ -245,10 +245,10 @@ int main(int argc, char **argv) {
                 for (int i = 0; i < LEN(bindings); i++) {
                     xcb_keycode_t detail = ((xcb_key_press_event_t*)event)->detail;
                     uint8_t mod = ((xcb_key_press_event_t*)event)->state & ~IGNORE_MASK;
-                    if(bindings[i]._code == detail && bindings[i].mod == mod) {
+                    if(bindings[i].keycode == detail && bindings[i].mod == mod) {
                         bindings[i].func();
                         resize(dis);
-                        xcb_allow_events(dis, XCB_ALLOW_REPLAY_KEYBOARD , XCB_CURRENT_TIME);
+                        xcb_allow_events(dis, XCB_ALLOW_REPLAY_KEYBOARD, XCB_CURRENT_TIME);
                         break;
                     }
                 }
