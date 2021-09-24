@@ -1,13 +1,13 @@
-#include <xcb/xcb.h>
 #include <X11/X.h>
 #include <X11/keysym.h>
-#include <xcb/xcb_keysyms.h>
-#include <stdio.h>
-#include <unistd.h>
-#include <stdlib.h>
 #include <signal.h>
-#include <string.h>
 #include <stdbool.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <unistd.h>
+#include <xcb/xcb.h>
+#include <xcb/xcb_keysyms.h>
 
 #define LEN(A) (sizeof(A)/sizeof(A[0]))
 
