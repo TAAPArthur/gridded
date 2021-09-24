@@ -7,6 +7,7 @@
 #include <string.h>
 #include <unistd.h>
 #include <xcb/xcb.h>
+#include <xcb/xcb_icccm.h>
 #include <xcb/xcb_keysyms.h>
 
 #define LEN(A) (sizeof(A)/sizeof(A[0]))
@@ -48,6 +49,13 @@ xcb_window_t createWindow(xcb_connection_t* dis) {
     xcb_create_window(dis, XCB_COPY_FROM_PARENT, win, embed? embed: screen->root, 0, 0, 10, 10, 0, XCB_WINDOW_CLASS_INPUT_OUTPUT,
  screen->root_visual, XCB_CW_BACK_PIXEL | XCB_CW_EVENT_MASK, &values);
     return win;
+}
+
+void setWindowHints(xcb_connection_t* dis, xcb_window_t win) {
+    xcb_icccm_wm_hints_t hints;
+    xcb_icccm_wm_hints_set_input(&hints, 1);
+    xcb_icccm_wm_hints_set_normal(&hints);
+    xcb_icccm_set_wm_hints_checked(dis, win, &hints);
 }
 
 void die(const char* err) {
@@ -208,6 +216,7 @@ int main(int argc, char **argv) {
 
     if(!parent) {
         parent = createWindow(dis);
+        setWindowHints(dis, parent);
         pid_t pid = getpid();
         xcb_change_property(dis, XCB_PROP_MODE_REPLACE, parent, pid_atom, XCB_ATOM_CARDINAL, 32, 1, &pid);
         xcb_map_window(dis, parent);
