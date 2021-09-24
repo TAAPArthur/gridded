@@ -165,6 +165,17 @@ int get_int_property(xcb_connection_t*dis, xcb_window_t win, xcb_atom_t atom) {
     return result;
 }
 
+
+void copy_string_property(xcb_connection_t*dis, xcb_window_t src, xcb_window_t dest, xcb_atom_t atom, xcb_atom_t type) {
+    xcb_get_property_reply_t* reply;
+    xcb_get_property_cookie_t cookie = xcb_get_property(dis, 0, src, atom, type, 0, -1);
+    if((reply = xcb_get_property_reply(dis, cookie, NULL)))
+        if(xcb_get_property_value_length(reply)) {
+            xcb_change_property(dis, XCB_PROP_MODE_REPLACE, dest, atom, type, 8, xcb_get_property_value_length(reply), xcb_get_property_value(reply));
+        }
+    free(reply);
+}
+
 bool add_window(xcb_window_t win, pid_t pid) {
     for(int i = 0; i < MAX_WINDOWS && pids[i]; i++) {
         if(pids[i] == pid) {
@@ -212,6 +223,10 @@ int main(int argc, char **argv) {
     signal(SIGCHLD, SIG_IGN);
     xcb_connection_t* dis = xcb_connect(NULL, NULL);
     xcb_atom_t pid_atom = get_atom(dis, "_NET_WM_PID");
+    xcb_atom_t wm_name_atom = get_atom(dis, "_NET_WM_NAME");
+    xcb_atom_t utf8_string_atom = get_atom(dis, "UTF8_STRING");
+
+
     argv = parse_args(argv + 1);
 
     if(!parent) {
@@ -234,14 +249,28 @@ int main(int argc, char **argv) {
     xcb_generic_event_t* event;
     xcb_flush(dis);
     Window win;
+    const static uint32_t child_window_masks[] = { XCB_EVENT_MASK_PROPERTY_CHANGE };
     while(num_windows && (event = xcb_wait_for_event(dis))) {
         switch(event->response_type & 127) {
             case XCB_MAP_NOTIFY:
                 win = ((xcb_map_notify_event_t *)event)->window;
                 if(add_window(win, get_int_property(dis, win, pid_atom))) {
+                    xcb_change_window_attributes (dis, win, XCB_CW_EVENT_MASK, child_window_masks);
                     resize(dis);
+                    if(win == windows[0]) {
+                        copy_string_property(dis, windows[0], parent, wm_name_atom, utf8_string_atom );
+                        copy_string_property(dis, windows[0], parent, XCB_ATOM_WM_NAME, XCB_ATOM_STRING);
+                    }
                 }
                 break;
+            case XCB_PROPERTY_NOTIFY :
+                if( windows[0] == ((xcb_property_notify_event_t *)event)->window) {
+                        xcb_atom_t atom = ((xcb_property_notify_event_t *)event)->atom;
+                    if( wm_name_atom == atom )
+                        copy_string_property(dis, windows[0], parent, atom, utf8_string_atom );
+                    else if( XCB_ATOM_WM_NAME == atom)
+                        copy_string_property(dis, windows[0], parent, atom, XCB_ATOM_STRING);
+                }
             case XCB_DESTROY_NOTIFY:
                 win = ((xcb_destroy_notify_event_t*)event)->window;
                 if(win == parent)
