@@ -1,6 +1,6 @@
 
 CFLAGS ?= -std=c99 -Wall -pedantic
-CPPFLAGS += -D_POSIX_C_SOURCE=200112L
+CPPFLAGS += -D_POSIX_C_SOURCE=200809L
 PREFIX ?= /usr
 LDLIBS = -lxcb -lxcb-keysyms -lxcb-icccm
 BIN = gridded

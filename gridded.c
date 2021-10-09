@@ -5,6 +5,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/wait.h>
 #include <unistd.h>
 #include <xcb/xcb.h>
 #include <xcb/xcb_icccm.h>
@@ -193,7 +194,6 @@ bool remove_window(xcb_window_t win) {
                 windows[n] = windows[n+1];
                 pids[n] = pids[n+1];
             }
-            num_windows--;
             return 1;
         }
     }
@@ -219,13 +219,26 @@ void init_grab_bindings(xcb_connection_t* dis) {
     xcb_key_symbols_free  (symbols);
 }
 
+void reapChildfunc(int s) {
+    int wstatus;
+    pid_t pid;
+    while(1) {
+        pid = waitpid(-1, &wstatus, s?WNOHANG:0);
+        if (pid > 0) {
+            if(--num_windows == 0) {
+                exit(WIFEXITED(wstatus) ? WEXITSTATUS(wstatus) : WIFSIGNALED(wstatus) ? WTERMSIG(wstatus): 127);
+            }
+        } else break;
+    }
+}
+
 int main(int argc, char **argv) {
-    signal(SIGCHLD, SIG_IGN);
+    struct sigaction sa = {.sa_handler = reapChildfunc, .sa_flags = SA_RESTART};
+    sigaction(SIGCHLD, &sa, NULL);
     xcb_connection_t* dis = xcb_connect(NULL, NULL);
     xcb_atom_t pid_atom = get_atom(dis, "_NET_WM_PID");
     xcb_atom_t wm_name_atom = get_atom(dis, "_NET_WM_NAME");
     xcb_atom_t utf8_string_atom = get_atom(dis, "UTF8_STRING");
-
 
     argv = parse_args(argv + 1);
 
@@ -250,7 +263,7 @@ int main(int argc, char **argv) {
     xcb_flush(dis);
     Window win;
     const static uint32_t child_window_masks[] = { XCB_EVENT_MASK_PROPERTY_CHANGE };
-    while(num_windows && (event = xcb_wait_for_event(dis))) {
+    while((event = xcb_wait_for_event(dis))) {
         switch(event->response_type & 127) {
             case XCB_MAP_NOTIFY:
                 win = ((xcb_map_notify_event_t *)event)->window;
@@ -304,4 +317,5 @@ int main(int argc, char **argv) {
         free(event);
         xcb_flush(dis);
     }
+    return -1;
 }
