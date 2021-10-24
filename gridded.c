@@ -81,6 +81,7 @@ static int spawn(const char* command) {
 
 bool initial_mirror;
 bool full;
+bool last_on_top;
 #define GET_ARG atoi(argv[0][2] ? *argv +2 :*++argv);
 char ** parse_args (char **argv) {
     for(; argv[0]; ++argv) {
@@ -91,6 +92,9 @@ char ** parse_args (char **argv) {
                     break;
                 case 'f':
                     full = 1;
+                    break;
+                case 'l':
+                    last_on_top = 1;
                     break;
                 case 'm':
                     initial_mirror = 1;
@@ -116,6 +120,15 @@ char ** parse_args (char **argv) {
 
 void resize(xcb_connection_t* dis) {
     xcb_clear_area(dis, 1, parent, 0, 0, parent_width,parent_height);
+    if(full) {
+        for(int i=0; i < num_windows; i++) {
+            if(windows[i])
+                xcb_configure_window(dis, windows[i],
+                        XCB_CONFIG_WINDOW_X | XCB_CONFIG_WINDOW_Y | XCB_CONFIG_WINDOW_WIDTH | XCB_CONFIG_WINDOW_HEIGHT | XCB_CONFIG_WINDOW_STACK_MODE,
+                        (int[5]) {0,0, parent_width,parent_height, !last_on_top ? XCB_STACK_MODE_BELOW : XCB_STACK_MODE_ABOVE});
+        }
+        return;
+    }
     int width = cols && !full ? parent_width / cols: parent_width;
     int height = rows && !full  ? parent_height / rows: parent_height;
     for(int r = 0, i=0; (r < rows || !rows) && i < num_windows; r++)
@@ -141,7 +154,7 @@ void mirror() {
     for(int i = 0; i < num_windows; i+=2) {
         swap_windows(i, i + 1);
     }
-
+    last_on_top = !last_on_top;
 }
 
 xcb_atom_t get_atom(xcb_connection_t* dis, const char*name) {
