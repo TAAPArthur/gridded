@@ -118,11 +118,9 @@ void resize(xcb_connection_t* dis) {
     xcb_clear_area(dis, 1, parent, 0, 0, parent_width,parent_height);
     int width = cols && !full ? parent_width / cols: parent_width;
     int height = rows && !full  ? parent_height / rows: parent_height;
-    for(int r = 0, i=0; r < rows || !rows; r++)
-        for(int c = 0; c < cols || !cols || full; c++, i++) {
-            if(windows[i] == 0 || i == MAX_WINDOWS )
-                return;
-            else
+    for(int r = 0, i=0; (r < rows || !rows) && i < num_windows; r++)
+        for(int c = 0; (c < cols || !cols) && i < num_windows; c++, i++) {
+            if(windows[i])
                 xcb_configure_window(dis, windows[i],
                         XCB_CONFIG_WINDOW_X | XCB_CONFIG_WINDOW_Y | XCB_CONFIG_WINDOW_WIDTH | XCB_CONFIG_WINDOW_HEIGHT,
                         (int[4]) {c*width, r*height, width, height});
