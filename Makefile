@@ -8,7 +8,7 @@ BIN = gridded
 gridded: $(BIN).o
 	$(CC) $(LDFLAGS) -o $@ $^ $(LDLIBS)
 
-install:
+install: gridded
 	install -Dt $(DESTDIR)$(PREFIX)/bin $(BIN)
 
 uninstall:
